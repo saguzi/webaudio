@@ -1,157 +1,201 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-  <meta charset="UTF-8">
-  <title>Web Audio Generator</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-    }
-    textarea {
-      width: 100%;
-      height: 100px;
-    }
-    .highlight span {
-      display: inline-block;
-      padding: 2px 4px;
-      margin: 1px;
-    }
-    .vol { background: #f88; }
-    .dur { background: #8f8; }
-    .type { background: #88f; }
-    .freq { background: #ff8; }
-    .vib { background: #f8f; }
-    .controls { margin: 10px 0; }
-    .input-group { margin: 10px; width: 18%; display: flex; flex-direction: column; }
-    #inputs {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-    .highlight div {
-      min-height: 1em;
-      border: 1px solid transparent;
-      display: flex;
-      align-items: center;
-      padding-left: 1em;
-    }
-    .highlight div.playing {
-      border: 1px solid black;
-      background: rgba(0,0,0,0.05);
-    }
-    .highlight div::before {
-      content: '';
-      display: inline-block;
-      width: 1em;
-      margin-right: 4px;
-    }
-    .highlight div.playing::before {
-      content: '▶';
-      color: green;
-    }
-    .param-inputs {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 0.9em;
-    }
-    .param-inputs input {
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .param-inputs select {
-      width: 100%;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Web Audio Generator</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+        }
+
+        .highlight span {
+            display: inline-block;
+            padding: 2px 4px;
+            margin: 1px;
+        }
+
+        .vol {
+            background: #f88;
+        }
+
+        .dur {
+            background: #8f8;
+        }
+
+        .type {
+            background: #88f;
+        }
+
+        .freq {
+            background: #ff8;
+        }
+
+        .vib {
+            background: #f8f;
+        }
+
+        .controls {
+            margin: 10px 0;
+        }
+
+        .input-group {
+            margin: 10px;
+            width: 18%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #inputs {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+
+        .highlight div {
+            min-height: 1em;
+            border: 1px solid transparent;
+            display: flex;
+            align-items: center;
+            padding-left: 1em;
+        }
+
+        .highlight div.playing {
+            border: 1px solid black;
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .highlight div::before {
+            content: '';
+            display: inline-block;
+            width: 1em;
+            margin-right: 4px;
+        }
+
+        .highlight div.playing::before {
+            content: '▶';
+            color: green;
+        }
+
+        .param-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-size: 0.9em;
+        }
+
+        .param-inputs input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .param-inputs select {
+            width: 100%;
+        }
+    </style>
 </head>
+
 <body>
-  <h1>Web Audio Generator</h1>
+    <h1>Web Audio Generator</h1>
 
-  <div class="controls">
-    <button id="play">再生</button>
-    <button id="stop">停止</button>
-    <label>
-      音量
-      <input id="volume" type="range" min="0" max="1" step="0.01" value="0.5">
-    </label>
-  </div>
+    <div class="controls">
+        <button id="play">再生</button>
+        <button id="stop">停止</button>
+        <label>
+            音量
+            <input id="volume" type="range" min="0" max="1" step="0.01" value="0.5">
+        </label>
+    </div>
 
-  <div id="inputs">
-    ${[...Array(5)].map((_, i) => `
-      <div class="input-group">
-        <div class="param-inputs">
-          <label>音量 Min/Max <input type="text" maxlength="2" id="volMin${i}"> <input type="text" maxlength="2" id="volMax${i}"></label>
-          <label>拍数 Min/Max <input type="text" maxlength="4" id="durMin${i}"> <input type="text" maxlength="4" id="durMax${i}"></label>
-          <label>波形<select id="type${i}" multiple>
-            <option value="00">sine</option>
-            <option value="11">square</option>
-            <option value="22">sawtooth</option>
-            <option value="33">triangle</option>
-          </select></label>
-          <label>周波数 Min/Max <input type="text" maxlength="6" id="freqMin${i}"> <input type="text" maxlength="6" id="freqMax${i}"></label>
-          <label>ビブラート Min/Max <input type="text" maxlength="4" id="vibMin${i}"> <input type="text" maxlength="4" id="vibMax${i}"></label>
-          <button onclick="generateRandom(${i})">生成</button>
-        </div>
-        <textarea class="note-input" placeholder="数値を入力（1行に1音）"></textarea>
-        <div class="highlight"></div>
-      </div>
-    `).join('')}
-  </div>
+    <div id="inputs"></div>
 
-  <div id="explanation"></div>
+    <div id="explanation"></div>
 
-  <script>
-    const playBtn = document.getElementById('play');
-    const stopBtn = document.getElementById('stop');
-    const volumeSlider = document.getElementById('volume');
-    const inputGroups = document.querySelectorAll('.input-group');
-    const explanation = document.getElementById('explanation');
+    <script>
+        function createInputGroup(i) {
+            return `
+                <div class="input-group">
+                <div class="param-inputs">
+                    <label>音量 Min/Max <input type="text" maxlength="2" id="volMin${i}"> <input type="text" maxlength="2" id="volMax${i}"></label>
+                    <label>拍数 Min/Max <input type="text" maxlength="4" id="durMin${i}"> <input type="text" maxlength="4" id="durMax${i}"></label>
+                    <label>波形<select id="type${i}" multiple>
+                    <option value="00">sine</option>
+                    <option value="11">square</option>
+                    <option value="22">sawtooth</option>
+                    <option value="33">triangle</option>
+                    </select></label>
+                    <label>周波数 Min/Max <input type="text" maxlength="6" id="freqMin${i}"> <input type="text" maxlength="6" id="freqMax${i}"></label>
+                    <label>ビブラート Min/Max <input type="text" maxlength="4" id="vibMin${i}"> <input type="text" maxlength="4" id="vibMax${i}"></label>
+                    <button onclick="generateRandom(${i})">生成</button>
+                </div>
+                <textarea class="note-input" placeholder="数値を入力（1行に1音）"></textarea>
+                <div class="highlight"></div>
+                </div>
+            `;
+        }
 
-    let audioCtx;
-    let masterGain;
-    let isPlaying = false;
-    let currentOscs = [];
+        const container = document.getElementById('inputs');
+        for (let i = 0; i < 5; i++) {
+            container.insertAdjacentHTML('beforeend', createInputGroup(i));
+        }
 
-    function parseLine(line) {
-      if (!/^\d{18}$/.test(line)) return null;
-      const vol = parseInt(line.slice(0, 2)) / 99;
-      const dur = parseInt(line.slice(2, 6));
-      const typeCode = line.slice(6, 8);
-      const typeMap = {
-        '00': 'sine',
-        '11': 'square',
-        '22': 'sawtooth',
-        '33': 'triangle'
-      };
-      const type = typeMap[typeCode] || 'sine';
-      const freq = parseInt(line.slice(8, 14));
-      const depth = parseInt(line.slice(14, 18)) / 1000;
-      return { vol, dur, type, freq, depth };
-    }
 
-    function visualizeInputs() {
-      inputGroups.forEach(group => {
-        const textarea = group.querySelector('textarea');
-        const highlight = group.querySelector('.highlight');
-        const lines = textarea.value.split('\n');
+        const playBtn = document.getElementById('play');
+        const stopBtn = document.getElementById('stop');
+        const volumeSlider = document.getElementById('volume');
+        const inputGroups = document.querySelectorAll('.input-group');
+        const explanation = document.getElementById('explanation');
 
-        highlight.innerHTML = '';
+        let audioCtx;
+        let masterGain;
+        let isPlaying = false;
+        let currentOscs = [];
 
-        const validLines = lines.filter(line => /^\d{18}$/.test(line));
-        const durations = validLines.map(line => parseInt(line.slice(2, 6)) || 0);
-        const totalDuration = durations.reduce((a, b) => a + b, 0) || 1;
+        function parseLine(line) {
+            if (!/^\d{18}$/.test(line)) return null;
+            const vol = parseInt(line.slice(0, 2)) / 99;
+            const dur = parseInt(line.slice(2, 6));
+            const typeCode = line.slice(6, 8);
+            const typeMap = {
+                '00': 'sine',
+                '11': 'square',
+                '22': 'sawtooth',
+                '33': 'triangle'
+            };
+            const type = typeMap[typeCode] || 'sine';
+            const freq = parseInt(line.slice(8, 14));
+            const depth = parseInt(line.slice(14, 18)) / 1000;
+            return { vol, dur, type, freq, depth };
+        }
 
-        lines.forEach(line => {
-          if (line.trim() === '') return;
+        function visualizeInputs() {
+            inputGroups.forEach(group => {
+                const textarea = group.querySelector('textarea');
+                const highlight = group.querySelector('.highlight');
+                const lines = textarea.value.split('\n');
 
-          if (!/^\d{18}$/.test(line)) {
-            highlight.innerHTML += `<div style="color:red">不正な形式: ${line}</div>`;
-          } else {
-            const dur = parseInt(line.slice(2, 6)) || 1;
-            const height = (dur / totalDuration) * 100;
-            highlight.innerHTML += `
+                highlight.innerHTML = '';
+
+                const validLines = lines.filter(line => /^\d{18}$/.test(line));
+                const durations = validLines.map(line => parseInt(line.slice(2, 6)) || 0);
+                const totalDuration = durations.reduce((a, b) => a + b, 0) || 1;
+
+                lines.forEach(line => {
+                    if (line.trim() === '') return;
+
+                    if (!/^\d{18}$/.test(line)) {
+                        highlight.innerHTML += `<div style="color:red">不正な形式: ${line}</div>`;
+                    } else {
+                        const dur = parseInt(line.slice(2, 6)) || 1;
+                        const height = (dur / totalDuration) * 100;
+                        highlight.innerHTML += `
               <div style="height:${height}%">
                 <span class="vol">${line.slice(0, 2)}</span>
                 <span class="dur">${line.slice(2, 6)}</span>
@@ -159,11 +203,11 @@
                 <span class="freq">${line.slice(8, 14)}</span>
                 <span class="vib">${line.slice(14, 18)}</span>
               </div>`;
-          }
-        });
-      });
+                    }
+                });
+            });
 
-      explanation.innerHTML = `
+            explanation.innerHTML = `
         <p><strong>数値の意味:</strong></p>
         <ul>
           <li><span class="vol">音量 (00〜99)</span>: 音の大きさ</li>
@@ -173,111 +217,112 @@
           <li><span class="vib">ビブラート深さ (4桁)</span>: 振動の深さ</li>
         </ul>
       `;
-    }
+        }
 
-    function playSound({ vol, dur, type, freq, depth }) {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      const vibrato = audioCtx.createOscillator();
-      const vibratoGain = audioCtx.createGain();
+        function playSound({ vol, dur, type, freq, depth }) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            const vibrato = audioCtx.createOscillator();
+            const vibratoGain = audioCtx.createGain();
 
-      osc.type = type;
-      osc.frequency.value = freq;
+            osc.type = type;
+            osc.frequency.value = freq;
 
-      vibrato.frequency.value = 5;
-      vibratoGain.gain.value = depth;
+            vibrato.frequency.value = 5;
+            vibratoGain.gain.value = depth;
 
-      vibrato.connect(vibratoGain);
-      vibratoGain.connect(osc.frequency);
+            vibrato.connect(vibratoGain);
+            vibratoGain.connect(osc.frequency);
 
-      gain.gain.value = vol * volumeSlider.value;
-      osc.connect(gain).connect(masterGain);
+            gain.gain.value = vol * volumeSlider.value;
+            osc.connect(gain).connect(masterGain);
 
-      osc.start();
-      vibrato.start();
-      osc.stop(audioCtx.currentTime + dur / 1000);
-      vibrato.stop(audioCtx.currentTime + dur / 1000);
+            osc.start();
+            vibrato.start();
+            osc.stop(audioCtx.currentTime + dur / 1000);
+            vibrato.stop(audioCtx.currentTime + dur / 1000);
 
-      currentOscs.push(osc, vibrato);
-    }
+            currentOscs.push(osc, vibrato);
+        }
 
-    function playAll() {
-      if (isPlaying) return;
-      isPlaying = true;
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      masterGain = audioCtx.createGain();
-      masterGain.connect(audioCtx.destination);
-      masterGain.gain.value = volumeSlider.value;
+        function playAll() {
+            if (isPlaying) return;
+            isPlaying = true;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            masterGain.connect(audioCtx.destination);
+            masterGain.gain.value = volumeSlider.value;
 
-      let maxTime = 0;
+            let maxTime = 0;
 
-      inputGroups.forEach(group => {
-        const textarea = group.querySelector('textarea');
-        const highlight = group.querySelector('.highlight');
-        const lines = textarea.value.split('\n');
-        const lineDivs = highlight.querySelectorAll('div');
-        let time = 0;
-        let validLineIndex = 0;
+            inputGroups.forEach(group => {
+                const textarea = group.querySelector('textarea');
+                const highlight = group.querySelector('.highlight');
+                const lines = textarea.value.split('\n');
+                const lineDivs = highlight.querySelectorAll('div');
+                let time = 0;
+                let validLineIndex = 0;
 
-        lines.forEach(line => {
-          const sound = parseLine(line);
-          if (!sound) return;
-          const div = lineDivs[validLineIndex];
-          setTimeout(() => {
-            div?.classList.add('playing');
-            playSound(sound);
-          }, time);
-          setTimeout(() => {
-            div?.classList.remove('playing');
-          }, time + sound.dur);
-          time += sound.dur;
-          validLineIndex++;
+                lines.forEach(line => {
+                    const sound = parseLine(line);
+                    if (!sound) return;
+                    const div = lineDivs[validLineIndex];
+                    setTimeout(() => {
+                        div?.classList.add('playing');
+                        playSound(sound);
+                    }, time);
+                    setTimeout(() => {
+                        div?.classList.remove('playing');
+                    }, time + sound.dur);
+                    time += sound.dur;
+                    validLineIndex++;
+                });
+
+                if (time > maxTime) maxTime = time;
+            });
+
+            setTimeout(() => isPlaying = false, maxTime);
+        }
+
+        function stopAll() {
+            isPlaying = false;
+            currentOscs.forEach(osc => {
+                try { osc.stop(); } catch (e) { }
+            });
+            currentOscs = [];
+            if (audioCtx) audioCtx.close();
+        }
+
+        function generateRandom(i) {
+            const get = id => document.getElementById(id + i).value || '0';
+            const rand = (min, max, pad = 0) => String(Math.floor(Math.random() * (max - min + 1)) + min).padStart(pad, '0');
+            const waves = [...document.getElementById('type' + i).selectedOptions].map(o => o.value);
+            const lines = [];
+            for (let j = 0; j < 100; j++) {
+                if (!waves.length) break;
+                const vol = rand(+get('volMin'), +get('volMax'), 2);
+                const dur = rand(+get('durMin'), +get('durMax'), 4);
+                const type = waves[Math.floor(Math.random() * waves.length)];
+                const freq = rand(+get('freqMin'), +get('freqMax'), 6);
+                const vib = rand(+get('vibMin'), +get('vibMax'), 4);
+                lines.push(`${vol}${dur}${type}${freq}${vib}`);
+            }
+            inputGroups[i].querySelector('textarea').value = lines.join('\n');
+            visualizeInputs();
+        }
+
+        playBtn.onclick = playAll;
+        stopBtn.onclick = stopAll;
+        volumeSlider.oninput = () => {
+            if (masterGain) masterGain.gain.value = volumeSlider.value;
+        };
+
+        document.querySelectorAll('.note-input').forEach(textarea => {
+            textarea.oninput = visualizeInputs;
         });
 
-        if (time > maxTime) maxTime = time;
-      });
-
-      setTimeout(() => isPlaying = false, maxTime);
-    }
-
-    function stopAll() {
-      isPlaying = false;
-      currentOscs.forEach(osc => {
-        try { osc.stop(); } catch (e) {}
-      });
-      currentOscs = [];
-      if (audioCtx) audioCtx.close();
-    }
-
-    function generateRandom(i) {
-      const get = id => document.getElementById(id + i).value || '0';
-      const rand = (min, max, pad = 0) => String(Math.floor(Math.random() * (max - min + 1)) + min).padStart(pad, '0');
-      const waves = [...document.getElementById('type' + i).selectedOptions].map(o => o.value);
-      const lines = [];
-      for (let j = 0; j < 100; j++) {
-        if (!waves.length) break;
-        const vol = rand(+get('volMin'), +get('volMax'), 2);
-        const dur = rand(+get('durMin'), +get('durMax'), 4);
-        const type = waves[Math.floor(Math.random() * waves.length)];
-        const freq = rand(+get('freqMin'), +get('freqMax'), 6);
-        const vib = rand(+get('vibMin'), +get('vibMax'), 4);
-        lines.push(`${vol}${dur}${type}${freq}${vib}`);
-      }
-      inputGroups[i].querySelector('textarea').value = lines.join('\n');
-      visualizeInputs();
-    }
-
-    playBtn.onclick = playAll;
-    stopBtn.onclick = stopAll;
-    volumeSlider.oninput = () => {
-      if (masterGain) masterGain.gain.value = volumeSlider.value;
-    };
-
-    document.querySelectorAll('.note-input').forEach(textarea => {
-      textarea.oninput = visualizeInputs;
-    });
-
-    window.addEventListener('DOMContentLoaded', visualizeInputs);
-  </script>
+        window.addEventListener('DOMContentLoaded', visualizeInputs);
+    </script>
 </body>
+
 </html>
