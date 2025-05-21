@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Web Audio Generator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+    }
+    .highlight span {
+      display: inline-block;
+      padding: 2px 4px;
+      margin: 1px;
+    }
+    .vol { background: #f88; }
+    .dur { background: #8f8; }
+    .type { background: #88f; }
+    .freq { background: #ff8; }
+    .vib { background: #f8f; }
+    .controls { margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h1>Web Audio Generator</h1>
+
+  <div class="controls">
+    <button id="play">再生</button>
+    <button id="stop">停止</button>
+    <label>
+      音量
+      <input id="volume" type="range" min="0" max="1" step="0.01" value="0.5">
+    </label>
+  </div>
+
+  <textarea id="input" placeholder="数値を入力（1行に1音）"></textarea>
+  <div class="highlight" id="highlight"></div>
+  <div id="explanation"></div>
+
+  <script>
+    const playBtn = document.getElementById('play');
+    const stopBtn = document.getElementById('stop');
+    const volumeSlider = document.getElementById('volume');
+    const input = document.getElementById('input');
+    const highlight = document.getElementById('highlight');
+    const explanation = document.getElementById('explanation');
+
+    let audioCtx;
+    let masterGain;
+    let isPlaying = false;
+    let currentOscs = [];
+
+    function parseLine(line) {
+      const vol = parseInt(line.slice(0, 2)) / 99;
+      const dur = parseInt(line.slice(2, 6));
+      const typeCode = line.slice(6, 8);
+      const typeMap = {
+        '00': 'sine',
+        '11': 'square',
+        '22': 'sawtooth',
+        '33': 'triangle'
+      };
+      const type = typeMap[typeCode] || 'sine';
+      const freq = parseInt(line.slice(8, 18));
+      const depth = parseInt(line.slice(18, 22)) / 1000;
+      return { vol, dur, type, freq, depth };
+    }
+
+    function visualizeInput() {
+      const lines = input.value.split('\n');
+      highlight.innerHTML = lines.map(line => {
+        if (line.length !== 22) return `<div style="color:red">不正な形式: ${line}</div>`;
+        return `
+          <div>
+            <span class="vol">${line.slice(0, 2)}</span>
+            <span class="dur">${line.slice(2, 6)}</span>
+            <span class="type">${line.slice(6, 8)}</span>
+            <span class="freq">${line.slice(8, 18)}</span>
+            <span class="vib">${line.slice(18, 22)}</span>
+          </div>`;
+      }).join('');
+
+      explanation.innerHTML = `
+        <p><strong>数値の意味:</strong></p>
+        <ul>
+          <li><span class="vol">音量 (00〜99)</span>: 音の大きさ</li>
+          <li><span class="dur">拍数 (4桁)</span>: 再生時間（ミリ秒）</li>
+          <li><span class="type">波形 (00=sine, 11=square, 22=sawtooth, 33=triangle)</span></li>
+          <li><span class="freq">周波数 (10桁)</span>: 音の高さ</li>
+          <li><span class="vib">ビブラート深さ (4桁)</span>: 振動の深さ</li>
+        </ul>
+      `;
+    }
+
+    function playSound({ vol, dur, type, freq, depth }) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const vibrato = audioCtx.createOscillator();
+      const vibratoGain = audioCtx.createGain();
+
+      osc.type = type;
+      osc.frequency.value = freq;
+
+      vibrato.frequency.value = 5; // vibrato speed
+      vibratoGain.gain.value = depth;
+
+      vibrato.connect(vibratoGain);
+      vibratoGain.connect(osc.frequency);
+
+      gain.gain.value = vol * volumeSlider.value;
+      osc.connect(gain).connect(masterGain);
+
+      osc.start();
+      vibrato.start();
+      osc.stop(audioCtx.currentTime + dur / 1000);
+      vibrato.stop(audioCtx.currentTime + dur / 1000);
+
+      currentOscs.push(osc, vibrato);
+    }
+
+    function playAll() {
+      if (isPlaying) return;
+      isPlaying = true;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.connect(audioCtx.destination);
+      masterGain.gain.value = volumeSlider.value;
+
+      const lines = input.value.split('\n');
+      let time = 0;
+      for (const line of lines) {
+        if (line.length !== 22) continue;
+        const sound = parseLine(line);
+        setTimeout(() => playSound(sound), time);
+        time += sound.dur;
+      }
+
+      setTimeout(() => isPlaying = false, time);
+    }
+
+    function stopAll() {
+      isPlaying = false;
+      currentOscs.forEach(osc => osc.stop());
+      currentOscs = [];
+      if (audioCtx) audioCtx.close();
+    }
+
+    playBtn.onclick = playAll;
+    stopBtn.onclick = stopAll;
+    input.oninput = visualizeInput;
+    volumeSlider.oninput = () => {
+      if (masterGain) masterGain.gain.value = volumeSlider.value;
+    };
+  </script>
+</body>
+</html>
