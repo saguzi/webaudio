@@ -51,8 +51,18 @@
       content: '▶';
       color: green;
     }
-    #explanation {
-      margin-top: 20px;
+    .param-inputs {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.9em;
+    }
+    .param-inputs input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .param-inputs select {
+      width: 100%;
     }
   </style>
 </head>
@@ -69,26 +79,25 @@
   </div>
 
   <div id="inputs">
-    <div class="input-group">
-      <textarea class="note-input" placeholder="数値を入力（1行に1音）"></textarea>
-      <div class="highlight"></div>
-    </div>
-    <div class="input-group">
-      <textarea class="note-input" placeholder="（任意）"></textarea>
-      <div class="highlight"></div>
-    </div>
-    <div class="input-group">
-      <textarea class="note-input" placeholder="（任意）"></textarea>
-      <div class="highlight"></div>
-    </div>
-    <div class="input-group">
-      <textarea class="note-input" placeholder="（任意）"></textarea>
-      <div class="highlight"></div>
-    </div>
-    <div class="input-group">
-      <textarea class="note-input" placeholder="（任意）"></textarea>
-      <div class="highlight"></div>
-    </div>
+    ${[...Array(5)].map((_, i) => `
+      <div class="input-group">
+        <div class="param-inputs">
+          <label>音量 Min/Max <input type="text" maxlength="2" id="volMin${i}"> <input type="text" maxlength="2" id="volMax${i}"></label>
+          <label>拍数 Min/Max <input type="text" maxlength="4" id="durMin${i}"> <input type="text" maxlength="4" id="durMax${i}"></label>
+          <label>波形<select id="type${i}" multiple>
+            <option value="00">sine</option>
+            <option value="11">square</option>
+            <option value="22">sawtooth</option>
+            <option value="33">triangle</option>
+          </select></label>
+          <label>周波数 Min/Max <input type="text" maxlength="6" id="freqMin${i}"> <input type="text" maxlength="6" id="freqMax${i}"></label>
+          <label>ビブラート Min/Max <input type="text" maxlength="4" id="vibMin${i}"> <input type="text" maxlength="4" id="vibMax${i}"></label>
+          <button onclick="generateRandom(${i})">生成</button>
+        </div>
+        <textarea class="note-input" placeholder="数値を入力（1行に1音）"></textarea>
+        <div class="highlight"></div>
+      </div>
+    `).join('')}
   </div>
 
   <div id="explanation"></div>
@@ -106,6 +115,7 @@
     let currentOscs = [];
 
     function parseLine(line) {
+      if (!/^\d{18}$/.test(line)) return null;
       const vol = parseInt(line.slice(0, 2)) / 99;
       const dur = parseInt(line.slice(2, 6));
       const typeCode = line.slice(6, 8);
@@ -125,18 +135,18 @@
       inputGroups.forEach(group => {
         const textarea = group.querySelector('textarea');
         const highlight = group.querySelector('.highlight');
-        const lines = textarea.value.split('\n').filter(l => l.trim() !== '');
+        const lines = textarea.value.split('\n');
 
         highlight.innerHTML = '';
 
-        const durations = lines.map(line => {
-          if (line.length !== 18) return 0;
-          return parseInt(line.slice(2, 6)) || 0;
-        });
-        const totalDuration = durations.reduce((a, b) => a + b, 0);
+        const validLines = lines.filter(line => /^\d{18}$/.test(line));
+        const durations = validLines.map(line => parseInt(line.slice(2, 6)) || 0);
+        const totalDuration = durations.reduce((a, b) => a + b, 0) || 1;
 
         lines.forEach(line => {
-          if (line.length !== 18) {
+          if (line.trim() === '') return;
+
+          if (!/^\d{18}$/.test(line)) {
             highlight.innerHTML += `<div style="color:red">不正な形式: ${line}</div>`;
           } else {
             const dur = parseInt(line.slice(2, 6)) || 1;
@@ -204,13 +214,15 @@
       inputGroups.forEach(group => {
         const textarea = group.querySelector('textarea');
         const highlight = group.querySelector('.highlight');
-        const lines = textarea.value.split('\n').filter(l => l.trim() !== '');
+        const lines = textarea.value.split('\n');
         const lineDivs = highlight.querySelectorAll('div');
         let time = 0;
-        lines.forEach((line, i) => {
-          if (line.length !== 18) return;
+        let validLineIndex = 0;
+
+        lines.forEach(line => {
           const sound = parseLine(line);
-          const div = lineDivs[i];
+          if (!sound) return;
+          const div = lineDivs[validLineIndex];
           setTimeout(() => {
             div?.classList.add('playing');
             playSound(sound);
@@ -219,7 +231,9 @@
             div?.classList.remove('playing');
           }, time + sound.dur);
           time += sound.dur;
+          validLineIndex++;
         });
+
         if (time > maxTime) maxTime = time;
       });
 
@@ -235,6 +249,24 @@
       if (audioCtx) audioCtx.close();
     }
 
+    function generateRandom(i) {
+      const get = id => document.getElementById(id + i).value || '0';
+      const rand = (min, max, pad = 0) => String(Math.floor(Math.random() * (max - min + 1)) + min).padStart(pad, '0');
+      const waves = [...document.getElementById('type' + i).selectedOptions].map(o => o.value);
+      const lines = [];
+      for (let j = 0; j < 100; j++) {
+        if (!waves.length) break;
+        const vol = rand(+get('volMin'), +get('volMax'), 2);
+        const dur = rand(+get('durMin'), +get('durMax'), 4);
+        const type = waves[Math.floor(Math.random() * waves.length)];
+        const freq = rand(+get('freqMin'), +get('freqMax'), 6);
+        const vib = rand(+get('vibMin'), +get('vibMax'), 4);
+        lines.push(`${vol}${dur}${type}${freq}${vib}`);
+      }
+      inputGroups[i].querySelector('textarea').value = lines.join('\n');
+      visualizeInputs();
+    }
+
     playBtn.onclick = playAll;
     stopBtn.onclick = stopAll;
     volumeSlider.oninput = () => {
@@ -244,6 +276,8 @@
     document.querySelectorAll('.note-input').forEach(textarea => {
       textarea.oninput = visualizeInputs;
     });
+
+    window.addEventListener('DOMContentLoaded', visualizeInputs);
   </script>
 </body>
 </html>
