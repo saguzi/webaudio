@@ -35,14 +35,20 @@
       border: 1px solid transparent;
       display: flex;
       align-items: center;
+      padding-left: 1em;
     }
     .highlight div.playing {
       border: 1px solid black;
       background: rgba(0,0,0,0.05);
     }
+    .highlight div::before {
+      content: '';
+      display: inline-block;
+      width: 1em;
+      margin-right: 4px;
+    }
     .highlight div.playing::before {
       content: '▶';
-      margin-right: 4px;
       color: green;
     }
     #explanation {
