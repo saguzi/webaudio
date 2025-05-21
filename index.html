@@ -32,6 +32,18 @@
     }
     .highlight div {
       min-height: 1em;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+    }
+    .highlight div.playing {
+      border: 1px solid black;
+      background: rgba(0,0,0,0.05);
+    }
+    .highlight div.playing::before {
+      content: '▶';
+      margin-right: 4px;
+      color: green;
     }
     #explanation {
       margin-top: 20px;
@@ -185,14 +197,23 @@
 
       inputGroups.forEach(group => {
         const textarea = group.querySelector('textarea');
+        const highlight = group.querySelector('.highlight');
         const lines = textarea.value.split('\n').filter(l => l.trim() !== '');
+        const lineDivs = highlight.querySelectorAll('div');
         let time = 0;
-        for (const line of lines) {
-          if (line.length !== 18) continue;
+        lines.forEach((line, i) => {
+          if (line.length !== 18) return;
           const sound = parseLine(line);
-          setTimeout(() => playSound(sound), time);
+          const div = lineDivs[i];
+          setTimeout(() => {
+            div?.classList.add('playing');
+            playSound(sound);
+          }, time);
+          setTimeout(() => {
+            div?.classList.remove('playing');
+          }, time + sound.dur);
           time += sound.dur;
-        }
+        });
         if (time > maxTime) maxTime = time;
       });
 
