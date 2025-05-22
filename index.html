@@ -122,19 +122,19 @@
         function createInputGroup(i) {
             return `
                 <div class="input-group">
-                <div class="param-inputs">
-                    <label>音量 Min/Max <input type="text" maxlength="2" id="volMin${i}"> <input type="text" maxlength="2" id="volMax${i}"></label>
-                    <label>拍数 Min/Max <input type="text" maxlength="4" id="durMin${i}"> <input type="text" maxlength="4" id="durMax${i}"></label>
-                    <label>波形<select id="type${i}" multiple>
-                    <option value="00">sine</option>
-                    <option value="11">square</option>
-                    <option value="22">sawtooth</option>
-                    <option value="33">triangle</option>
-                    </select></label>
-                    <label>周波数 Min/Max <input type="text" maxlength="6" id="freqMin${i}"> <input type="text" maxlength="6" id="freqMax${i}"></label>
-                    <label>ビブラート Min/Max <input type="text" maxlength="4" id="vibMin${i}"> <input type="text" maxlength="4" id="vibMax${i}"></label>
-                    <button onclick="generateRandom(${i})">生成</button>
-                </div>
+                // <div class="param-inputs">
+                //     <label>音量 Min/Max <input type="text" maxlength="2" id="volMin${i}"> <input type="text" maxlength="2" id="volMax${i}"></label>
+                //     <label>拍数 Min/Max <input type="text" maxlength="4" id="durMin${i}"> <input type="text" maxlength="4" id="durMax${i}"></label>
+                //     <label>波形<select id="type${i}" multiple>
+                //     <option value="00">sine</option>
+                //     <option value="11">square</option>
+                //     <option value="22">sawtooth</option>
+                //     <option value="33">triangle</option>
+                //     </select></label>
+                //     <label>周波数 Min/Max <input type="text" maxlength="6" id="freqMin${i}"> <input type="text" maxlength="6" id="freqMax${i}"></label>
+                //     <label>ビブラート Min/Max <input type="text" maxlength="4" id="vibMin${i}"> <input type="text" maxlength="4" id="vibMax${i}"></label>
+                //     <button onclick="generateRandom(${i})">生成</button>
+                // </div>
                 <textarea class="note-input" placeholder="数値を入力（1行に1音）"></textarea>
                 <div class="highlight"></div>
                 </div>
